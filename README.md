@@ -1,6 +1,6 @@
 # OpenAPI MCP Server
 
-This project is a Python server based on the Model Context Protocol (MCP). Its main purpose is to let AI Coding Agents (such as Cursor, Windsurf, and Claude Desktop) dynamically and precisely retrieve large OpenAPI specification files (e.g., ThingsBoard API) without stuffing the entire JSON into the conversation. This drastically reduces token consumption and prevents the Agent from hallucinating.
+This project is a Python server based on the Model Context Protocol (MCP). Its main purpose is to let AI Coding Agents (such as Cursor, Windsurf, Kilo Code, Roo Code, and Claude Desktop) dynamically and precisely retrieve large OpenAPI specification files (e.g., ThingsBoard API) without stuffing the entire JSON into the conversation. This drastically reduces token consumption and prevents the Agent from hallucinating.
 
 ## ✨ Key Features
 
@@ -88,6 +88,49 @@ This server runs in `stdio` mode, making it easy to integrate with mainstream AI
 
 
 3. Restart Windsurf.
+
+### Setup in Kilo Code
+
+1. Edit the Kilo config file: global `~/.config/kilo/kilo.jsonc`, or project-level `.kilo/kilo.jsonc` in the workspace root (create it if it doesn't exist). You can also add the server through the UI via **Settings → MCP → Add Server**.
+2. Add the server under the top-level `mcp` key (note: `command` is an array of the executable plus its arguments):
+```jsonc
+{
+  "mcp": {
+    "MultiAPI_MCP": {
+      "type": "local",
+      "command": [
+        "/absolute/path/to/this/project/.venv/bin/python",
+        "/absolute/path/to/this/project/mcp_openapi_server.py"
+      ],
+      "enabled": true
+    }
+  }
+}
+```
+
+3. Reload the window and confirm the server shows as connected under **Settings → MCP**. All tools are read-only, so it is safe to auto-approve them via the `permission` key (e.g. `"multiapi_mcp_*": "allow"`).
+
+### Setup in Roo Code
+
+1. Click the MCP Servers icon in the top navigation of the Roo Code panel, then **Edit Global MCP** (global `mcp_settings.json`) or **Edit Project MCP** (`.roo/mcp.json` in the project root).
+2. Add the following configuration:
+```json
+{
+  "mcpServers": {
+    "MultiAPI_MCP": {
+      "command": "/absolute/path/to/this/project/.venv/bin/python",
+      "args": ["/absolute/path/to/this/project/mcp_openapi_server.py"],
+      "env": {},
+      "disabled": false,
+      "alwaysAllow": ["list_available_apis", "get_api_overview", "search_endpoints", "get_endpoint_details", "get_schema", "search_schemas"]
+    }
+  }
+}
+```
+
+3. Restart Roo Code and confirm the server shows a green light. All tools are read-only, so listing them in `alwaysAllow` is safe.
+
+> **Tip: use the project venv interpreter.** The samples above point `command` at `.venv/bin/python` (create it with `uv venv && uv pip install mcp`), so the server never depends on your global Python having `mcp` installed. A plain `python` also works if `mcp` is available globally — the same applies to the Cursor and Windsurf setups.
 
 ---
 
