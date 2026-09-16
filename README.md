@@ -24,6 +24,18 @@ pip install mcp
 3. **Place API documents**:
 Put your OpenAPI spec file (e.g., `thingsboard-api.json`) in the same directory as `mcp_openapi_server.py`. API spec files are not included in this repository — `*-api.json` is ignored by `.gitignore`.
 
+To get the ThingsBoard spec, download it from a running ThingsBoard instance (the SpringDoc endpoint):
+
+```bash
+# From the public ThingsBoard demo server
+curl -o thingsboard-api.json https://demo.thingsboard.io/v3/api-docs
+
+# Or from your own instance
+curl -o thingsboard-api.json https://<your-thingsboard-host>/v3/api-docs
+```
+
+You can also browse the interactive docs of your instance at `https://<your-thingsboard-host>/swagger-ui`.
+
 ---
 
 ## ⚙️ Server Configuration
