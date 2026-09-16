@@ -5,7 +5,9 @@ This project is a Python server based on the Model Context Protocol (MCP). Its m
 ## ✨ Key Features
 
 * **Multi-system support**: Manage multiple API documents (e.g., ThingsBoard, ERP, Payment API) simultaneously through a single MCP server.
-* **Precise retrieval**: The Agent searches for endpoints via tools and only fetches the schemas it needs, enabling zero-overhead API integration.
+* **Precise retrieval**: Multi-keyword AND search across paths, summaries, descriptions, operationIds, tags, and parameter names — with result counts and pagination, never silent truncation.
+* **Inline `$ref` resolution**: Component schema references in request/response bodies are expanded in place (depth-limited, cycle-safe), so the agent sees actual fields instead of opaque `$ref` pointers. Use `get_schema` to drill deeper.
+* **Auth & server metadata**: Server base URLs and `securitySchemes` (JWT header format, API-key prefix format, …) are exposed through `get_api_overview`, so generated clients authenticate correctly.
 * **Low latency and low cost**: Avoids transferring MB-sized API documents with every prompt.
 
 ---
@@ -95,11 +97,44 @@ Once configured, you can give commands like the following directly in the chat:
 
 > "Check the ThingsBoard API documentation and write me a Python script to add a new device."
 
-The Agent will automatically invoke the following tools to handle it:
+The Agent combines the tools below, typically in this order:
 
-* `list_available_apis`: Check which API systems are currently available.
-* `search_endpoints`: Find relevant routes by keyword.
-* `get_endpoint_details`: Get the detailed Request/Response structure of a specific route.
+1. `list_available_apis()` — see which API systems are loaded (name, title, version, server URLs, operation/tag/schema counts).
+2. `get_api_overview(api_name)` — table of contents: title, version, server URLs, **authentication schemes** (e.g. JWT via `X-Authorization: Bearer …`, or `ApiKey <value>` prefix format), and all tags with operation counts.
+3. `search_endpoints(api_name, query, tag?, include_deprecated?, offset?, limit?)` — multi-keyword AND search (case-insensitive) over path, summary, description, operationId, tags, and parameter names. Each result line looks like:
+
+   ```
+   POST /api/device — Create Or Update Device (saveDevice) [device-controller]
+   ```
+
+   The first line shows the total match count and the visible range (e.g. `137 matches, showing 1–30 — more available, pass offset=30`), so nothing is silently truncated. Deprecated endpoints are excluded unless `include_deprecated=True`.
+4. `get_endpoint_details(api_name, path, method?, resolve_refs?, max_depth?, include_error_responses?)` — parameters, request body, security, and (by default) only 2xx responses for one operation. `path` also accepts an **operationId** (e.g. `saveDevice`) and the leading slash is optional; unknown paths get close-match suggestions. `$ref`s to component schemas are inlined up to `max_depth` (default 3); deeper or cyclic refs stay as `{"$ref": "..."}` markers. When a schema is inlined for a ref, its `discriminator.mapping` table is stripped (only `propertyName` is kept) so large polymorphic lookup tables are not repeated per field; fetch the schema directly with `get_schema` to see its mapping.
+5. `get_schema(api_name, name, resolve_refs?, max_depth?)` — fetch a component schema by exact name (e.g. `Device`, `NameConflictPolicy`) with the same depth-limited, cycle-safe ref expansion; unknown names get suggestions. The schema's own `discriminator.mapping` (if any) is preserved.
+6. `search_schemas(api_name, query)` — find schemas by name (multi-keyword AND) and get `name (type) — description` summary lines to jump into `get_schema`.
+
+Example: to write the "add a device" script, the agent runs `list_available_apis` → `get_api_overview` (auth + base URL) → `search_endpoints("thingsboard", "create device")` → `get_endpoint_details("thingsboard", "saveDevice")` (request body shows the expanded `Device` fields) — and it has everything it needs without ever loading the raw JSON.
+
+---
+
+## 🧪 Running the Tests
+
+The project venv is managed with [uv](https://docs.astral.sh/uv/). Install the dev dependency and run the suite:
+
+```bash
+uv pip install -r requirements-dev.txt
+uv run pytest tests/
+```
+
+No install at all? One-off run: `uv run --with pytest pytest tests/`.
+
+Tests run against the real spec when `thingsboard-api.json` is present (skipped otherwise) plus a synthetic mini-spec for edge cases such as self-referencing schemas.
+
+---
+
+## ⚠️ Limitations
+
+* **OpenAPI 3.x only.** `$ref` resolution covers `#/components/schemas/...`. Swagger 2.0 specs (`#/definitions/...`) load and search fine, but refs are not expanded.
+* Registering a spec only requires it to be valid JSON with a `paths` object; other fields (servers, securitySchemes, components) are surfaced when present.
 
 ---
 
