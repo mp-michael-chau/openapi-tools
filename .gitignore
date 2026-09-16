@@ -1,0 +1,6 @@
+.venv/
+.kilo/
+__pycache__/
+*.pyc
+*-api.json
+.DS_Store
