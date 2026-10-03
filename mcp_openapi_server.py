@@ -19,7 +19,8 @@ mcp = MCPServer("OpenAPI_Tools")
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 API_REGISTRY = {
-    "thingsboard": os.path.join(BASE_DIR, "thingsboard-api.json"),
+    "thingsboard-3.8PE": os.path.join(BASE_DIR, "thingsboard-api-3.8PE.json"),
+    "thingsboard-4.3CE": os.path.join(BASE_DIR, "thingsboard-api-4.3CE.json"),
 }
 
 HTTP_METHODS = frozenset(
